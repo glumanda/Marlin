@@ -7634,8 +7634,7 @@ inline void protected_pin_err() {
  *  I       Flag to ignore Marlin's pin protection
  */
 inline void gcode_M42() {
-  if (!parser.seenval('S')) return;
-  const byte pin_status = parser.value_byte();
+  if (!parser.seenval('S') && !parser.seenval('D') && !parser.seenval('A')) return;
 
   const pin_t pin_number = parser.byteval('P', LED_PIN);
   if (pin_number < 0) return;
@@ -7643,8 +7642,17 @@ inline void gcode_M42() {
   if (!parser.boolval('I') && pin_is_protected(pin_number)) return protected_pin_err();
 
   pinMode(pin_number, OUTPUT);
-  digitalWrite(pin_number, pin_status);
-  analogWrite(pin_number, pin_status);
+  const byte pin_status = parser.value_byte();
+  if (parser.seenval('D')) {
+	digitalWrite(pin_number, pin_status);
+  }
+  else if (parser.seenval('A')) {
+	analogWrite(pin_number, pin_status);
+  }
+  if (parser.seenval('S')) {
+	digitalWrite(pin_number, pin_status);
+	analogWrite(pin_number, pin_status);
+  }
 
   #if FAN_COUNT > 0
     switch (pin_number) {
@@ -14636,9 +14644,11 @@ void prepare_move_to_destination() {
       if (new_led != red_led) {
         red_led = new_led;
         #if PIN_EXISTS(STAT_LED_RED)
-          WRITE(STAT_LED_RED_PIN, new_led ? HIGH : LOW);
+          // WRITE(STAT_LED_RED_PIN, new_led ? HIGH : LOW);
+          WRITE(STAT_LED_RED_PIN, new_led ? LOW : HIGH); // common annode
           #if PIN_EXISTS(STAT_LED_BLUE)
-            WRITE(STAT_LED_BLUE_PIN, new_led ? LOW : HIGH);
+            // WRITE(STAT_LED_BLUE_PIN, new_led ? LOW : HIGH);
+            WRITE(STAT_LED_BLUE_PIN, new_led ? HIGH : LOW); // common annode
           #endif
         #else
           WRITE(STAT_LED_BLUE_PIN, new_led ? HIGH : LOW);
@@ -15277,6 +15287,13 @@ void setup() {
   #if ENABLED(SDSUPPORT) && DISABLED(ULTRA_LCD)
     card.beginautostart();
   #endif
+  
+  // junand 05.12.2014
+  // #ifdef TEMP_STAT_LEDS
+	  // pinMode ( STAT_LED_RED_PIN, OUTPUT );
+	  // pinMode ( STAT_LED_BLUE_PIN, OUTPUT );
+  // #endif
+
 }
 
 /**
